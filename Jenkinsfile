@@ -30,7 +30,7 @@ pipeline {
                     env.APP_IMAGE = "hotel-booking-system:${env.BUILD_NUMBER}"
                     if (params.DEPLOY_TO_KUBERNETES) {
                         if (!params.IMAGE_REPOSITORY?.trim()
-                                || !(params.IMAGE_REPOSITORY ==~ /^[A-Za-z0-9][A-Za-z0-9._/-]*$/)) {
+                                || !(params.IMAGE_REPOSITORY ==~ '^[A-Za-z0-9][A-Za-z0-9._/-]*$')) {
                             error('Set IMAGE_REPOSITORY to a valid registry/repository name before deployment.')
                         }
                         env.APP_IMAGE = "${params.IMAGE_REPOSITORY}:${env.BUILD_NUMBER}"
