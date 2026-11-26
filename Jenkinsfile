@@ -20,7 +20,7 @@ pipeline {
     stages {
         stage('Build and verify') {
             steps {
-                sh 'mvn -B clean verify'
+                bat 'mvn -B clean verify'
             }
         }
 
@@ -36,7 +36,7 @@ pipeline {
                         env.APP_IMAGE = "${params.IMAGE_REPOSITORY}:${env.BUILD_NUMBER}"
                     }
                 }
-                sh 'docker build --tag "$APP_IMAGE" .'
+                bat 'docker build --tag "%APP_IMAGE%" .'
             }
         }
 
@@ -48,11 +48,12 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: params.DOCKER_CREDENTIALS_ID,
                         usernameVariable: 'REGISTRY_USERNAME',
                         passwordVariable: 'REGISTRY_PASSWORD')]) {
-                    sh '''
-                        set +x
-                        printf '%s' "$REGISTRY_PASSWORD" | docker login \
-                            --username "$REGISTRY_USERNAME" --password-stdin
-                        docker push "$APP_IMAGE"
+                    bat '''
+                        @echo off
+                        echo %REGISTRY_PASSWORD% | docker login --username "%REGISTRY_USERNAME%" --password-stdin
+                        if errorlevel 1 exit /b 1
+                        docker push "%APP_IMAGE%"
+                        if errorlevel 1 exit /b 1
                         docker logout
                     '''
                 }
@@ -66,12 +67,15 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: params.KUBECONFIG_CREDENTIALS_ID,
                         variable: 'KUBECONFIG')]) {
-                    sh '''
+                    bat '''
                         kubectl apply -f k8s/booking-storage.yaml
+                        if errorlevel 1 exit /b 1
                         kubectl apply -f k8s/deployment.yaml
+                        if errorlevel 1 exit /b 1
                         kubectl apply -f k8s/service.yaml
-                        kubectl set image deployment/hotel-booking \
-                            hotel-booking="$APP_IMAGE"
+                        if errorlevel 1 exit /b 1
+                        kubectl set image deployment/hotel-booking hotel-booking="%APP_IMAGE%"
+                        if errorlevel 1 exit /b 1
                         kubectl rollout status deployment/hotel-booking --timeout=180s
                     '''
                 }
@@ -81,7 +85,7 @@ pipeline {
 
     post {
         always {
-            sh 'docker image rm "$APP_IMAGE" 2>/dev/null || true'
+            bat 'docker image rm "%APP_IMAGE%" >NUL 2>&1 || exit /b 0'
         }
     }
 }
